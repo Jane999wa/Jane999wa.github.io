@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .container{
+            width: 200px;
+            height: 360px;background-color:paleturquoise ;
+            position: relative;
+        }
+        .model{
+            width: 20px;
+            height: 20px;
+            background-color: pink;
+            border: .3px solid #eeeeee;
+            box-sizing: border-box;
+            position: absolute;
+        }
+        .fixedmodel{
+            width: 20px;
+            height: 20px;
+            background-color: black;
+            border: .3px solid black;
+            box-sizing: border-box;
+            position: absolute;
+        }
+    </style>
+</head>
+<body onload="init()">
+    <div id = "container" class="container">
+    </div>
+</body>
+<script>
+    var STEP = 20;
+    var ROW = 18,
+    COL = 10;
+    var MODELS = [
+        //第一个模型 L型;
+        {
+            0:{
+                row: 2,
+                col : 0
+            },
+            1:{
+                row: 2,
+                col : 1
+            },
+            2:{
+                row: 2,
+                col : 2
+            },
+            3:{
+                row: 1,
+                col : 2
+            }
+        },
+        //第二个模型
+        {
+            0:{
+                row: 1,
+                col : 1
+            },
+            1:{
+                row: 0,
+                col : 0
+            },
+            2:{
+                row: 1,
+                col : 0
+            },
+            3:{
+                row: 2,
+                col : 0
+            }
+        }, 
+          //田型
+          {
+            0:{
+                row: 1,
+                col : 1
+            },
+            1:{
+                row: 2,
+                col : 1
+            },
+            2:{
+                row: 1,
+                col : 2
+            },
+            3:{
+                row: 2,
+                col : 2
+            }
+        },
+            //一型
+            {
+            0:{
+                row: 0,
+                col : 0
+            },
+            1:{
+                row: 0,
+                col : 1
+            },
+            2:{
+                row: 0,
+                col : 2
+            },
+            3:{
+                row: 0,
+                col : 3
+            }
+            },
+            //Z型;
+            {
+            0:{
+                row: 1,
+                col : 1
+            },
+            1:{
+                row: 1,
+                col : 2
+            },
+            2:{
+                row: 2,
+                col : 2
+            },
+            3:{
+                row: 2,
+                col : 3
+            }
+        }
+
+    ]
+    //记录16宫格位置;
+    var currentModel = {}
+    var currentX =0,
+    currentY = 0;
+    //记录所有块元素的位置;
+    //K = 行_列 : V = 块元素;
+    var fixedBlocks = {};
+    //定时器
+    var mInterval = null;
+    //函数入口;
+    function init(){
+        createModel();
+        keyboard();
+    }
+    function createModel(){
+        if(isOver()){
+            gameOver();
+            return;
+        }
+        //当前使用的模型;
+        currentModel = MODELS[Math.floor(Math.random() * MODELS.length)];
+        currentX = 0;
+        currentY = 0;
+        //生成对应数量的块元素;
+        for( var key in currentModel){
+           var divEle = document.createElement("div");
+           divEle.className = "model";
+           document.getElementById("container").appendChild(divEle);
+        }
+        //定位块元素位置
+        location1();
+        //自动掉落;
+        autoDown();
+    }
+    //根据数据源定位块元素位置
+    function location1(){
+        //判断是否越界;
+        checkBound();
+        //拿到所有块元素;
+       var eles = document.getElementsByClassName("model");
+       for(var i = 0; i < eles.length; i++){
+        var activityModel = eles[i];//单个块元素的行,列;
+        var blockModel = currentModel[i];
+        activityModel.style.top = ( currentY + blockModel.row)*STEP + "px";
+        activityModel.style.left = ( currentX + blockModel.col )* STEP + "px";
+       }
+    }
+    function keyboard(){
+        document.onkeydown = function(event){
+           switch(event.keyCode){
+            case 38:
+                rotate();
+                //move(0,-1);
+                break;
+                case 39:
+                    move(1,0);
+                break;
+                case 40:
+                    move(0,1)
+                break;
+                case 37:
+                    move(-1,0);
+                break;
+           }
+        }
+    }
+        function move(x,y){
+           // var m = document.getElementsByClassName("model")[0];
+           // m.style.top = parseInt(m.style.top || 0) + y * STEP + "px";
+          // m.style.left = parseInt(m.style.left || 0) + x * STEP + "px";
+          if(isMeet(currentX + x,currentY + y,currentModel)){
+            if(y !== 0){
+                fixed();
+            }
+            return ;
+          }
+            currentX += x;
+            currentY += y;
+            location1();
+        }
+        function rotate(){
+            //旋转后的行 = 旋转前的列
+            //旋转后的列 + 旋转前的行 = 3;
+            for(var key in currentModel){
+                var blockModel = currentModel[key];
+                var tempt = blockModel.row;
+                blockModel.row = blockModel.col;
+                blockModel.col = 3 - tempt;
+            }
+            location1();
+        }
+        function checkBound(){
+            var leftBound = 0,
+            rightBound = COL,
+            bottomBound = ROW;
+            for(var key in currentModel){
+                //块元素的数据;
+                var blockModel = currentModel[key];
+                //左侧越界;
+                if((blockModel.col + currentX) < 0){
+                    currentX++;
+                }
+                //右侧越界;
+                if((blockModel.col + currentX) >= rightBound){
+                    currentX--;
+                }
+                //底部越界;
+                if((blockModel.row + currentY) >= bottomBound){
+                    currentY--;
+                    fixed();
+                }
+            }
+        }
+    //把模型固定在底部
+    function fixed(){
+        //改变模型中块元素的样式;
+        var activityModel = document.getElementsByClassName("model");
+        for( var i = activityModel.length - 1;i >= 0; i--){
+            var blockModel = currentModel[i];
+             fixedBlocks[(currentY + blockModel.row) + "_" + (currentX + blockModel.col)] 
+             = activityModel[i];
+             activityModel[i].className = "fixedmodel";
+             //把该块元素放入变量中;
+        }
+        //是否要清理;
+        isRemove();
+        //创建新的模型;
+        createModel();
+    }
+    //模型之间的触碰问题;
+    function isMeet(x,y,model){
+        for(var k in model){
+            var blockModel = model[k];
+            if(fixedBlocks[(y + blockModel.row) + "_" + (x + blockModel.col)]){
+                return true;
+            }
+        }
+        return false;
+    }
+    //清理已满的一行;
+    function isRemove(){
+        //遍历所有行;
+        for(var i = 0; i < ROW; i++){
+            var flag = true;
+            for(var j = 0; j < COL; j++){
+                if(!fixedBlocks[i + "_" + j]){
+                    flag = false;
+                    break;
+                }
+            }
+            if(flag){
+                removeLine(i);
+            }
+        }
+    }
+    function removeLine(line){
+        for(var i = 0; i < COL; i++){
+        document.getElementById("container").removeChild(fixedBlocks[line + "_" + i]);
+        fixedBlocks[line + "_" + i] = null;
+        }
+        downLine(line);
+    }
+    //元素下落;
+    function downLine(line){
+        for(var i = line-1 ; i >= 0;i--){
+            for(j = 0; j < COL; j++){
+                if(!fixedBlocks[i + "_" + j]){
+                    continue;
+                }
+                fixedBlocks[(i + 1) + "_" + j] = fixedBlocks[i + "_" + j];
+                fixedBlocks[i + "_" + j].style.top = (i +1) * STEP + "px";
+                fixedBlocks[i + "_" + j] = null;
+            }
+        }
+    }
+    function autoDown(){
+        if(mInterval){
+            clearInterval(mInterval);
+        }
+        mInterval = setInterval(function(){
+            move(0, 1)
+        },600)
+    }
+    function isOver(){
+        for(var i = 0;i < COL; i++){
+            if(fixedBlocks[0 + "_"+ i]){
+                return true;
+            }
+        }
+        return false;
+    }
+    function gameOver(){
+        if(mInterval){
+            clearInterval(mInterval);
+        }
+        alert("好好学习,少玩游戏");
+    }
+</script>
+</html>
